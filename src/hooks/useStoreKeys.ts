@@ -1,6 +1,6 @@
 // src/store/hooks/useStoreKeys.ts
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Listener, State, StoreCore } from '../../types/store.types';
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { Listener, State, StoreCore } from "../types/store.types";
 
 /**
  * Creates a hook to use multiple specific keys from the store
@@ -10,24 +10,27 @@ import { Listener, State, StoreCore } from '../../types/store.types';
  * @returns {Function} useStoreKeys hook
  */
 export const createUseStoreKeys = <T extends State>(
-  storeCore: StoreCore<T>,
+  storeCore: StoreCore<T>
 ) => {
   return <K extends keyof T>(
-    keys: K[],
+    keys: K[]
   ): [
     Pick<T, K>,
     (
       updates:
         | Partial<Pick<T, K>>
-        | ((values: Pick<T, K>) => Partial<Pick<T, K>>),
-    ) => void,
+        | ((values: Pick<T, K>) => Partial<Pick<T, K>>)
+    ) => void
   ] => {
+    // Memoize keys array to prevent unnecessary re-subscriptions
+    const memoizedKeys = useMemo(() => [...keys].sort(), [keys.join(",")]);
+
     // For accessing multiple specific keys
-    const [values, setValues] = useState<Pick<T, K>>(
-      keys.reduce(
+    const [values, setValues] = useState<Pick<T, K>>(() =>
+      memoizedKeys.reduce(
         (acc, key) => ({ ...acc, [key]: storeCore.getState(key as string) }),
-        {} as Pick<T, K>,
-      ),
+        {} as Pick<T, K>
+      )
     );
     const mounted = useRef<boolean>(false);
 
@@ -42,68 +45,73 @@ export const createUseStoreKeys = <T extends State>(
     useEffect(() => {
       // Keep track of which keys we've subscribed to
       const unsubscribes: Array<() => void> = [];
-      const currentValues = { ...values };
 
       // Function to update just the changed key
       const createKeyListener = (k: K) => (newValue: T[K]) => {
         if (mounted.current) {
-          setValues((prev) => ({ ...prev, [k]: newValue }) as Pick<T, K>);
+          setValues((prev) => ({ ...prev, [k]: newValue } as Pick<T, K>));
         }
       };
 
-      // Subscribe to each key
-      keys.forEach((k) => {
-        // Update initial value
-        (currentValues as any)[k] = storeCore.getState(k as string);
+      // Initialize with current values
+      const initialValues = memoizedKeys.reduce(
+        (acc, k) => ({
+          ...acc,
+          [k]: storeCore.getState(k as string),
+        }),
+        {} as Pick<T, K>
+      );
+      setValues(initialValues);
 
-        // Subscribe to changes
+      // Subscribe to each key
+      memoizedKeys.forEach((k) => {
         const unsubscribe = storeCore.subscribe(
           k as string,
-          createKeyListener(k) as Listener,
+          createKeyListener(k) as Listener
         );
         unsubscribes.push(unsubscribe);
       });
-
-      // Set initial values
-      setValues(currentValues);
 
       // Cleanup subscriptions
       return () => {
         unsubscribes.forEach((unsubscribe) => unsubscribe());
       };
-    }, [keys.join(',')]); // Re-run if keys array changes
+    }, [memoizedKeys.join(",")]); // Use memoized keys
 
     // Create a setter function that only updates the keys in this hook
     const setKeyValues = useCallback(
       (
         updates:
           | Partial<Pick<T, K>>
-          | ((values: Pick<T, K>) => Partial<Pick<T, K>>),
+          | ((values: Pick<T, K>) => Partial<Pick<T, K>>)
       ) => {
-        const allowedUpdates: Partial<T> = {};
+        // Use Record<string, any> for dynamic assignment
+        const allowedUpdates: Record<string, any> = {};
 
         // Handle function updater pattern
-        if (typeof updates === 'function') {
-          const funcResult = (updates as Function)(values);
+        if (typeof updates === "function") {
+          const funcResult = updates(values);
           Object.keys(funcResult).forEach((key) => {
-            if (keys.includes(key as K)) {
-              allowedUpdates[key] = funcResult[key];
+            if (memoizedKeys.includes(key as K)) {
+              allowedUpdates[key] = funcResult[key as keyof typeof funcResult];
             }
           });
         } else {
           // Handle object updates
           Object.keys(updates).forEach((key) => {
-            if (keys.includes(key as K)) {
-              allowedUpdates[key] = (updates as Record<string, any>)[key];
+            if (memoizedKeys.includes(key as K)) {
+              allowedUpdates[key] = updates[key as keyof typeof updates];
             }
           });
         }
 
+        // Only call setState if we have valid updates
         if (Object.keys(allowedUpdates).length > 0) {
-          storeCore.setState(allowedUpdates);
+          // Cast to Partial<T> when passing to storeCore
+          storeCore.setState(allowedUpdates as Partial<T>);
         }
       },
-      [keys.join(','), values],
+      [memoizedKeys.join(","), values]
     );
 
     return [values, setKeyValues];

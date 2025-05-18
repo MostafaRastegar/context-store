@@ -11,6 +11,9 @@ A lightweight and flexible library for state management in React applications wi
 - 🧠 **Smart Updates**: Deep equality checks to prevent unnecessary renders
 - 🗄️ **Single Source of Truth**: Centralized state management
 - 🔧 **Flexible API**: Works with both object and function update patterns
+- 🐛 **Debug-friendly**: Built-in logging and debugging tools
+- ⚡ **Performance Optimized**: Shallow comparison options and memoization
+- 🛡️ **Error Handling**: Comprehensive error management with custom error types
 
 # Refactored Store Structure
 
@@ -21,9 +24,11 @@ src/
 ├── types/
 │   └── store.types.ts          # Type definitions for the store
 ├── utils/
-│   └── comparison.ts           # Utility functions like deep comparison
+│   ├── comparison.ts           # Deep/shallow comparison utilities
+│   ├── logger.ts               # Logging and error handling
+│   └── errorHandler.ts         # Centralized error management
 ├── store/
-│   ├── core.ts                 # Core store functionality (getState, setState, subscribe)
+│   ├── core.ts                 # Core store functionality 
 │   ├── notifier.ts             # Handle notifications to listeners
 │   ├── hooks/
 │   │   ├── useStore.ts         # Hook for using the entire store
@@ -31,7 +36,6 @@ src/
 │   │   └── useStoreKeys.ts     # Hook for using multiple keys
 │   └── index.ts                # Main export that composes everything
 ```
-
 
 ## Installation
 
@@ -165,6 +169,16 @@ Clears all subscriptions. Call this when you no longer need the store.
 store.destroy();
 ```
 
+#### `getListenersInfo()` (Debug Only)
+
+Returns debugging information about current listeners. Useful for development and debugging.
+
+```tsx
+const info = store.getListenersInfo();
+console.log('Listeners info:', info);
+// Output: { keyListeners: { count: 2, user: 1 }, globalListeners: 3 }
+```
+
 ### React Hooks
 
 #### `useStore()`
@@ -223,17 +237,134 @@ function UserStats() {
 }
 ```
 
+## Debugging and Development Tools
+
+### Built-in Logging
+
+The store includes a comprehensive logging system for development:
+
+```tsx
+import createStore, { StoreLogger } from 'react-state-store';
+
+// Enable logging for development (automatically enabled in NODE_ENV=development)
+StoreLogger.enable();
+
+const store = createStore({ count: 0 });
+
+// All store operations will now be logged:
+store.setState({ count: 1 }); // Logs: "🏪 Store: setState"
+store.subscribe('count', (newValue) => {}); // Logs: "🏪 Store: subscribe (key)"
+
+// Disable logging when not needed
+StoreLogger.disable();
+```
+
+### Error Handling
+
+The store provides detailed error information with custom error types:
+
+```tsx
+import { StateUpdateError, SubscriptionError } from 'react-state-store';
+
+try {
+  store.setState(null); // Invalid state
+} catch (error) {
+  if (error instanceof StateUpdateError) {
+    console.log('State update error:', error.message);
+    console.log('Attempted update:', error.data);
+  }
+}
+
+try {
+  store.subscribe('invalidKey'); // Invalid subscription
+} catch (error) {
+  if (error instanceof SubscriptionError) {
+    console.log('Subscription error:', error.message);
+  }
+}
+```
+
+### Performance Monitoring
+
+Monitor store performance and listener counts:
+
+```tsx
+function DebugInfo() {
+  const info = store.getListenersInfo();
+  
+  return (
+    <div>
+      <h3>Store Debug Info</h3>
+      <p>Global Listeners: {info.globalListeners}</p>
+      <h4>Key Listeners:</h4>
+      <ul>
+        {Object.entries(info.keyListeners).map(([key, count]) => (
+          <li key={key}>{key}: {count} listeners</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
 ## Advanced Usage
+
+### Performance Optimization
+
+For better performance, you can choose between deep and shallow equality checks:
+
+```tsx
+import { isEqual, isShallowEqual } from 'react-state-store';
+
+// Deep equality (default) - handles nested objects, arrays, dates, etc.
+const isDeepEqual = isEqual(obj1, obj2);
+
+// Shallow equality - faster for simple objects
+const isShallowEqual = isShallowEqual(obj1, obj2);
+
+// Use shallow comparison when you know your state structure is flat
+function SimpleCounter() {
+  // This component benefits from shallow comparison
+  // since we only have primitive values
+  const [value, setValue] = store.useStoreKey('simpleValue');
+  return <div>{value}</div>;
+}
+```
+
+### Complex Data Types Support
+
+The store handles complex JavaScript types correctly:
+
+```tsx
+const complexStore = createStore({
+  date: new Date(),
+  regex: /pattern/gi,
+  map: new Map([['key', 'value']]),
+  set: new Set([1, 2, 3]),
+  nested: { deep: { object: 'value' } }
+});
+
+// All these will trigger re-renders only when values actually change
+complexStore.setState({ date: new Date() }); // Different date = re-render
+complexStore.setState({ date: new Date(complexStore.getState('date')) }); // Same date = no re-render
+```
 
 ### Dynamic State Keys
 
-You can dynamically add new keys to your state:
+You can dynamically add new keys to your state. The store will automatically handle subscriptions for new keys:
 
 ```tsx
 function AddFeature() {
   const handleAddFeature = () => {
+    // Dynamically add new state keys
     store.setState({ 
-      newFeature: { enabled: true, config: {} } 
+      newFeature: { enabled: true, config: {} },
+      anotherKey: 'some value'
+    });
+    
+    // You can immediately subscribe to these new keys
+    const unsubscribe = store.subscribe('newFeature', (value) => {
+      console.log('New feature changed:', value);
     });
   };
   
@@ -533,7 +664,27 @@ This library is built on the following architectural principles:
 
 4. **Subscriber Isolation**: Ability to subscribe to specific parts of the state rather than the whole.
 
-5. **Deep Equality Checking**: To prevent unnecessary renders, only actual changes result in subscriber notifications.
+5. **Deep Equality Checking**: To prevent unnecessary renders, only actual changes result in subscriber notifications. Supports complex data types including Arrays, Dates, Maps, Sets, and deeply nested objects.
+
+6. **Error Handling**: Comprehensive error management with custom error types (`StateUpdateError`, `SubscriptionError`, `StoreError`) for better debugging experience.
+
+7. **Performance Optimization**: 
+   - Shallow comparison options for simple objects
+   - Memoization in hooks to prevent unnecessary re-subscriptions
+   - Automatic cleanup of empty listener sets
+   - Optimized change detection
+
+8. **Development Support**: Built-in logging system and debugging tools for development and testing.
+
+## Performance Considerations
+
+For optimal performance:
+
+1. **Use specific hooks**: Prefer `useStoreKey` and `useStoreKeys` over `useStore` when possible
+2. **Avoid whole-store subscriptions**: Only subscribe to parts of state you actually need
+3. **Consider shallow comparison**: For simple state structures, shallow comparison is faster
+4. **Monitor listener counts**: Use `getListenersInfo()` to check for memory leaks or excessive subscriptions
+5. **Batch updates**: Multiple `setState` calls in the same synchronous execution will be batched automatically
 
 ## License
 

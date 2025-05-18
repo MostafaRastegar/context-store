@@ -1,11 +1,11 @@
 // src/store/hooks/useStoreKey.ts
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Listener,
   SetStateAction,
   State,
   StoreCore,
-} from '../../types/store.types';
+} from "../types/store.types";
 
 /**
  * Creates a hook to use a specific key from the store
@@ -16,7 +16,7 @@ import {
  */
 export const createUseStoreKey = <T extends State>(storeCore: StoreCore<T>) => {
   return <K extends keyof T>(
-    key: K,
+    key: K
   ): [T[K], (newValue: SetStateAction<T[K]>) => void] => {
     // For accessing a specific key
     const [value, setValue] = useState<T[K]>(storeCore.getState(key as string));
@@ -44,7 +44,7 @@ export const createUseStoreKey = <T extends State>(storeCore: StoreCore<T>) => {
       // Subscribe to this key's changes only
       const unsubscribe = storeCore.subscribe(
         key as string,
-        updateState as Listener,
+        updateState as Listener
       );
       return unsubscribe;
     }, [key]);
@@ -54,12 +54,12 @@ export const createUseStoreKey = <T extends State>(storeCore: StoreCore<T>) => {
       (newValue: SetStateAction<T[K]>) => {
         storeCore.setState({
           [key]:
-            typeof newValue === 'function'
+            typeof newValue === "function"
               ? (newValue as Function)(storeCore.getState(key as string))
               : newValue,
         } as Partial<T>);
       },
-      [key],
+      [key]
     );
 
     return [value, setKeyValue];

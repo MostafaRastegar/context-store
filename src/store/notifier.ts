@@ -4,7 +4,7 @@ import {
   Listener,
   ListenersMap,
   State,
-} from '../types/store.types';
+} from "../types/store.types";
 
 /**
  * Creates a notification system for the store
@@ -18,8 +18,8 @@ export const createNotifier = <T extends State>(state: T) => {
     listenersMap[key] = new Set<Listener>();
   });
 
-  // Global listeners that respond to any state change
-  const globalListeners: Set<GlobalListener> = new Set();
+  // Global listeners that respond to any state change (typed for specific state T)
+  const globalListeners: Set<GlobalListener<T>> = new Set();
 
   /**
    * Notifies relevant listeners about changed keys
@@ -30,15 +30,20 @@ export const createNotifier = <T extends State>(state: T) => {
   const notify = (changedKeys: string[], currentState: T): void => {
     // Notify key-specific listeners
     changedKeys.forEach((key) => {
-      if (listenersMap[key]) {
-        listenersMap[key].forEach((listener) =>
-          listener(currentState[key], currentState),
-        );
+      // Ensure listener set exists for this key (handles dynamically added keys)
+      if (!listenersMap[key]) {
+        listenersMap[key] = new Set<Listener>();
       }
+
+      listenersMap[key].forEach((listener) =>
+        listener(currentState[key], currentState)
+      );
     });
 
-    // Notify global listeners
-    globalListeners.forEach((listener) => listener(currentState));
+    // Notify global listeners only if there were actual changes
+    if (changedKeys.length > 0) {
+      globalListeners.forEach((listener) => listener(currentState));
+    }
   };
 
   /**
@@ -55,7 +60,13 @@ export const createNotifier = <T extends State>(state: T) => {
     }
 
     listenersMap[key].add(listener);
-    return () => listenersMap[key].delete(listener);
+    return () => {
+      listenersMap[key]?.delete(listener);
+      // Clean up empty listener sets to prevent memory leaks
+      if (listenersMap[key]?.size === 0) {
+        delete listenersMap[key];
+      }
+    };
   };
 
   /**
@@ -64,7 +75,7 @@ export const createNotifier = <T extends State>(state: T) => {
    * @param {Function} listener - Callback function
    * @returns {Function} Unsubscribe function
    */
-  const addGlobalListener = (listener: GlobalListener): (() => void) => {
+  const addGlobalListener = (listener: GlobalListener<T>): (() => void) => {
     globalListeners.add(listener);
     return () => globalListeners.delete(listener);
   };
@@ -77,14 +88,28 @@ export const createNotifier = <T extends State>(state: T) => {
       listenersMap[key].clear();
     });
     globalListeners.clear();
+    // Clear the entire listeners map
+    Object.keys(listenersMap).forEach((key) => delete listenersMap[key]);
   };
+
+  /**
+   * Get debugging information about current listeners
+   */
+  const getListenersInfo = () => ({
+    keyListeners: Object.keys(listenersMap).reduce((acc, key) => {
+      acc[key] = listenersMap[key].size;
+      return acc;
+    }, {} as Record<string, number>),
+    globalListeners: globalListeners.size,
+  });
 
   return {
     notify,
     addKeyListener,
     addGlobalListener,
     clearAllListeners,
+    getListenersInfo, // For debugging
   };
 };
 
-export type Notifier = ReturnType<typeof createNotifier>;
+export type Notifier<T extends State> = ReturnType<typeof createNotifier<T>>;
