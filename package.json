@@ -1,0 +1,83 @@
+{
+  "name": "react-constore",
+  "version": "1.0.3",
+  "description": "Lightweight and efficient state management for React with TypeScript support",
+  "author": "Mostafa Rastegar",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mostafarastegar/react-constore.git"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean --minify --treeshake",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "prepare": "npm run build",
+    "type-check": "tsc --noEmit",
+    "size": "size-limit",
+    "test:size": "npm run build && npm run size",
+    "preview": "npm pack --dry-run",
+    "test:react18": "cd test-projects/react18 && npm test",
+    "test:react19": "cd test-projects/react19 && npm test",
+    "test:all": "npm run test:react18 && npm run test:react19"
+  },
+  "keywords": [
+    "react",
+    "react18",
+    "react19",
+    "state",
+    "management",
+    "context",
+    "typescript",
+    "hooks",
+    "store",
+    "concurrent",
+    "server-components"
+  ],
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@size-limit/preset-small-lib": "^11.0.0",
+    "@types/react": "^18.0.0",
+    "react": "^18.0.0",
+    "size-limit": "^11.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "size-limit": [
+    {
+      "path": "dist/index.js",
+      "limit": "2KB"
+    },
+    {
+      "path": "dist/index.mjs",
+      "limit": "2KB"
+    }
+  ],
+  "engines": {
+    "node": ">=16"
+  }
+}
