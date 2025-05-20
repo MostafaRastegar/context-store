@@ -1,5 +1,5 @@
 import React from "react";
-import createStore from "react-constore"; // fix error
+import createStore from "react-constore";
 
 // Create store
 const store = createStore({
