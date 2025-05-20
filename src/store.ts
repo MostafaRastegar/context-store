@@ -39,7 +39,11 @@ const createStore = <T extends State>(
   };
 
   // Get current state or specific key
-  const getState = (key?: string) => (key ? state[key] : state);
+  function getState(): T;
+  function getState<K extends keyof T>(key: K): T[K];
+  function getState<K extends keyof T>(key?: K) {
+    return key === undefined ? state : state[key];
+  }
 
   // Update state
   const setState = (partial: PartialState<T>) => {
@@ -93,12 +97,12 @@ const createStore = <T extends State>(
 
   // Hook to use entire store
   const useStore = (): [T, (partial: PartialState<T>) => void] => {
-    const [localState, setLocalState] = useState<T>(() => getState() as T);
+    const [localState, setLocalState] = useState<T>(() => getState());
     const isMounted = useRef<boolean>(false);
 
     useEffect(() => {
       isMounted.current = true;
-      setLocalState(getState() as T);
+      setLocalState(getState());
 
       const unsubscribe = subscribe((newState: T) => {
         if (isMounted.current) {
@@ -119,12 +123,12 @@ const createStore = <T extends State>(
   const useStoreKey = <K extends keyof T>(
     key: K
   ): [T[K], (value: SetStateAction<T[K]>) => void] => {
-    const [value, setValue] = useState<T[K]>(() => getState(key as string));
+    const [value, setValue] = useState<T[K]>(() => getState(key));
     const isMounted = useRef<boolean>(false);
 
     useEffect(() => {
       isMounted.current = true;
-      setValue(getState(key as string));
+      setValue(getState(key));
 
       const unsubscribe = subscribe(key as string, (newValue: T[K]) => {
         if (isMounted.current) {
@@ -140,12 +144,16 @@ const createStore = <T extends State>(
 
     const setKeyValue = useCallback(
       (newValue: SetStateAction<T[K]>) => {
-        setState({
-          [key]:
-            typeof newValue === "function"
-              ? (newValue as Function)(getState(key as string))
-              : newValue,
-        } as Partial<T>);
+        setState(
+          (prevState) =>
+            ({
+              ...prevState,
+              [key]:
+                typeof newValue === "function"
+                  ? (newValue as Function)(getState(key))
+                  : newValue,
+            } as Partial<T>)
+        );
       },
       [key]
     );
@@ -168,7 +176,7 @@ const createStore = <T extends State>(
 
     const [values, setValues] = useState<Pick<T, K>>(() => {
       return sortedKeys.reduce<Pick<T, K>>((acc, key) => {
-        acc[key] = getState(key as string);
+        acc[key] = getState(key);
         return acc;
       }, {} as Pick<T, K>);
     });
@@ -180,7 +188,7 @@ const createStore = <T extends State>(
 
       // Set initial values
       const initialValues = sortedKeys.reduce<Pick<T, K>>((acc, key) => {
-        acc[key] = getState(key as string);
+        acc[key] = getState(key);
         return acc;
       }, {} as Pick<T, K>);
       setValues(initialValues);

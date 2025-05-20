@@ -1,4 +1,4 @@
-// Minimal types
+// Improved types with better type inference
 export type State = Record<string, any>;
 export type Listener<T = any> = (value: T, state: State) => void;
 export type GlobalListener<T extends State> = (state: T) => void;
@@ -8,7 +8,7 @@ export type PartialState<T extends State> =
 export type SetStateAction<T> = T | ((prev: T) => T);
 
 export interface StoreAPI<T extends State> {
-  getState: (key?: string) => any;
+  getState: <K extends keyof T>(key?: K) => K extends keyof T ? T[K] : T;
   setState: (partial: PartialState<T>) => void;
   subscribe: {
     (listener: GlobalListener<T>): () => void;
