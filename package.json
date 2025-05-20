@@ -26,7 +26,11 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
+    "semantic-release": "semantic-release",
     "build": "tsup src/index.ts --format cjs,esm --dts --clean --minify --treeshake",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
     "prepare": "npm run build",
@@ -60,6 +64,7 @@
     }
   },
   "devDependencies": {
+    "semantic-release": "^24.2.4",
     "@size-limit/preset-small-lib": "^11.0.0",
     "@types/react": "^18.0.0",
     "react": "^18.0.0",

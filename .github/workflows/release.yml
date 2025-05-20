@@ -1,0 +1,29 @@
+npm: Release
+on:
+  push:
+    branches:
+      - main
+      - next
+
+
+permission:
+  contents: write
+  issue: write
+  pull-request: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18.x"  # نسخه صحیح Node.js
+      - run: npm ci
+      - run: npm run build
+      - run: npm audit signatures
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release
