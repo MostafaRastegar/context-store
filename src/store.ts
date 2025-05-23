@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type {
   State,
   StoreAPI,
@@ -24,6 +24,8 @@ const createStore = <T extends State>(
 
   // Notify listeners about changes
   const notify = (changedKeys: string[]) => {
+    if (changedKeys.length === 0) return;
+
     // Notify key-specific listeners
     changedKeys.forEach((key) => {
       const listeners = keyListeners.get(key);
@@ -33,9 +35,7 @@ const createStore = <T extends State>(
     });
 
     // Notify global listeners
-    if (changedKeys.length > 0) {
-      globalListeners.forEach((listener) => listener(state));
-    }
+    globalListeners.forEach((listener) => listener(state));
   };
 
   // Get current state or specific key
@@ -52,7 +52,7 @@ const createStore = <T extends State>(
 
     const changedKeys: string[] = [];
 
-    // Check each key for changes
+    // Check each key for changes using deep equality
     Object.keys(nextState).forEach((key) => {
       if (!isEqual(state[key], nextState[key])) {
         state = { ...state, [key]: nextState[key] } as T;
@@ -60,10 +60,7 @@ const createStore = <T extends State>(
       }
     });
 
-    // Notify only if there were changes
-    if (changedKeys.length > 0) {
-      notify(changedKeys);
-    }
+    notify(changedKeys);
   };
 
   // Subscribe to changes
@@ -71,8 +68,8 @@ const createStore = <T extends State>(
     keyOrListener: string | GlobalListener<T>,
     listener?: Listener
   ) => {
-    // Global listener
     if (typeof keyOrListener === "function") {
+      // Global listener
       globalListeners.add(keyOrListener);
       return () => globalListeners.delete(keyOrListener);
     }
@@ -98,25 +95,13 @@ const createStore = <T extends State>(
   // Hook to use entire store
   const useStore = (): [T, (partial: PartialState<T>) => void] => {
     const [localState, setLocalState] = useState<T>(() => getState());
-    const isMounted = useRef<boolean>(false);
 
     useEffect(() => {
-      isMounted.current = true;
       setLocalState(getState());
-
-      const unsubscribe = subscribe((newState: T) => {
-        if (isMounted.current) {
-          setLocalState(newState);
-        }
-      });
-
-      return () => {
-        isMounted.current = false;
-        unsubscribe();
-      };
+      return subscribe((newState: T) => setLocalState(newState));
     }, []);
 
-    return [localState, useCallback(setState, [])];
+    return [localState, setState];
   };
 
   // Hook to use specific key
@@ -124,36 +109,21 @@ const createStore = <T extends State>(
     key: K
   ): [T[K], (value: SetStateAction<T[K]>) => void] => {
     const [value, setValue] = useState<T[K]>(() => getState(key));
-    const isMounted = useRef<boolean>(false);
 
     useEffect(() => {
-      isMounted.current = true;
       setValue(getState(key));
-
-      const unsubscribe = subscribe(key as string, (newValue: T[K]) => {
-        if (isMounted.current) {
-          setValue(newValue);
-        }
-      });
-
-      return () => {
-        isMounted.current = false;
-        unsubscribe();
-      };
+      return subscribe(key as string, (newValue: T[K]) => setValue(newValue));
     }, [key]);
 
     const setKeyValue = useCallback(
       (newValue: SetStateAction<T[K]>) => {
-        setState(
-          (prevState) =>
-            ({
-              ...prevState,
-              [key]:
-                typeof newValue === "function"
-                  ? (newValue as Function)(getState(key))
-                  : newValue,
-            } as Partial<T>)
-        );
+        setState((prevState) => ({
+          ...prevState,
+          [key]:
+            typeof newValue === "function"
+              ? (newValue as Function)(getState(key))
+              : newValue,
+        }));
       },
       [key]
     );
@@ -161,7 +131,7 @@ const createStore = <T extends State>(
     return [value, setKeyValue];
   };
 
-  // Hook to use multiple keys
+  // Hook to use multiple keys - simplified version
   const useStoreKeys = <K extends keyof T>(
     keys: K[]
   ): [
@@ -172,41 +142,32 @@ const createStore = <T extends State>(
         | ((values: Pick<T, K>) => Partial<Pick<T, K>>)
     ) => void
   ] => {
-    const sortedKeys = useMemo(() => [...keys].sort(), [keys.join(",")]);
-
+    // Create initial values
     const [values, setValues] = useState<Pick<T, K>>(() => {
-      return sortedKeys.reduce<Pick<T, K>>((acc, key) => {
-        acc[key] = getState(key);
-        return acc;
-      }, {} as Pick<T, K>);
+      const result = {} as Pick<T, K>;
+      keys.forEach((key) => {
+        result[key] = getState(key);
+      });
+      return result;
     });
 
-    const isMounted = useRef<boolean>(false);
-
     useEffect(() => {
-      isMounted.current = true;
-
       // Set initial values
-      const initialValues = sortedKeys.reduce<Pick<T, K>>((acc, key) => {
-        acc[key] = getState(key);
-        return acc;
-      }, {} as Pick<T, K>);
+      const initialValues = {} as Pick<T, K>;
+      keys.forEach((key) => {
+        initialValues[key] = getState(key);
+      });
       setValues(initialValues);
 
       // Subscribe to each key
-      const unsubscribes: (() => void)[] = sortedKeys.map((key) =>
+      const unsubscribes = keys.map((key) =>
         subscribe(key as string, (newValue: T[K]) => {
-          if (isMounted.current) {
-            setValues((prev) => ({ ...prev, [key]: newValue }));
-          }
+          setValues((prev) => ({ ...prev, [key]: newValue }));
         })
       );
 
-      return () => {
-        isMounted.current = false;
-        unsubscribes.forEach((unsub: () => void) => unsub());
-      };
-    }, [sortedKeys.join(",")]);
+      return () => unsubscribes.forEach((unsub) => unsub());
+    }, [keys.join(",")]);
 
     const setKeyValues = useCallback(
       (
@@ -216,10 +177,11 @@ const createStore = <T extends State>(
       ) => {
         const result =
           typeof updates === "function" ? updates(values) : updates;
-        const filteredUpdates: Record<string, any> = {};
 
+        // Filter only the keys we're subscribed to
+        const filteredUpdates: Record<string, any> = {};
         Object.keys(result).forEach((key) => {
-          if (sortedKeys.includes(key as K)) {
+          if (keys.includes(key as K)) {
             filteredUpdates[key] = result[key as keyof typeof result];
           }
         });
@@ -228,7 +190,7 @@ const createStore = <T extends State>(
           setState(filteredUpdates as Partial<T>);
         }
       },
-      [sortedKeys.join(","), values]
+      [keys.join(","), values]
     );
 
     return [values, setKeyValues];
