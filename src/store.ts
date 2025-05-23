@@ -1,3 +1,5 @@
+// پیشنهاد: اضافه کردن cleanup method به store
+
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type {
   State,
@@ -9,24 +11,29 @@ import type {
 } from "./types";
 import { isEqual } from "./utils";
 
+// Enhanced StoreAPI with cleanup
+interface EnhancedStoreAPI<T extends State> extends StoreAPI<T> {
+  cleanup(): void;
+  isDestroyed(): boolean;
+}
+
 const createStore = <T extends State>(
   initialState: T | (() => T)
-): StoreAPI<T> => {
-  // Initialize state
+): EnhancedStoreAPI<T> => {
   let state: T =
     typeof initialState === "function"
       ? (initialState as () => T)()
       : initialState;
 
-  // Listeners storage - keep original structure
   const keyListeners = new Map<string, Set<Listener>>();
   const globalListeners = new Set<GlobalListener<T>>();
 
-  // Keep original synchronous notify but optimize object creation
-  const notify = (changedKeys: string[]) => {
-    if (changedKeys.length === 0) return;
+  // Flag برای چک کردن destroyed بودن store
+  let isDestroyed = false;
 
-    // Notify key-specific listeners (synchronous)
+  const notify = (changedKeys: string[]) => {
+    if (isDestroyed || changedKeys.length === 0) return;
+
     changedKeys.forEach((key) => {
       const listeners = keyListeners.get(key);
       if (listeners) {
@@ -34,19 +41,25 @@ const createStore = <T extends State>(
       }
     });
 
-    // Notify global listeners (synchronous)
     globalListeners.forEach((listener) => listener(state));
   };
 
-  // Get current state or specific key
   function getState(): T;
   function getState<K extends keyof T>(key: K): T[K];
   function getState<K extends keyof T>(key?: K) {
+    if (isDestroyed) {
+      console.warn("Store has been destroyed");
+      return key === undefined ? ({} as T) : (undefined as T[K]);
+    }
     return key === undefined ? state : state[key];
   }
 
-  // Optimized setState with single object creation
   const setState = (partial: PartialState<T>) => {
+    if (isDestroyed) {
+      console.warn("Cannot setState on destroyed store");
+      return;
+    }
+
     const nextState = typeof partial === "function" ? partial(state) : partial;
     if (!nextState || typeof nextState !== "object") return;
 
@@ -54,7 +67,6 @@ const createStore = <T extends State>(
     const updates: Record<string, any> = {};
     let hasChanges = false;
 
-    // Collect all changes first to avoid multiple object creations
     Object.keys(nextState).forEach((key) => {
       if (!isEqual(state[key], nextState[key])) {
         updates[key] = nextState[key];
@@ -64,24 +76,25 @@ const createStore = <T extends State>(
     });
 
     if (hasChanges) {
-      // Single object creation instead of multiple spreads
       state = { ...state, ...updates } as T;
       notify(changedKeys);
     }
   };
 
-  // Keep original subscribe signature
   const subscribe = ((
     keyOrListener: string | GlobalListener<T>,
     listener?: Listener
   ) => {
+    if (isDestroyed) {
+      console.warn("Cannot subscribe to destroyed store");
+      return () => {};
+    }
+
     if (typeof keyOrListener === "function") {
-      // Global listener
       globalListeners.add(keyOrListener);
       return () => globalListeners.delete(keyOrListener);
     }
 
-    // Key-specific listener
     const key = keyOrListener;
     if (!keyListeners.has(key)) {
       keyListeners.set(key, new Set());
@@ -97,19 +110,36 @@ const createStore = <T extends State>(
         }
       }
     };
-  }) as StoreAPI<T>["subscribe"];
+  }) as EnhancedStoreAPI<T>["subscribe"];
 
-  // Hook to use entire store with memory optimization
+  // 🆕 Cleanup method برای پاک کردن کامل store
+  const cleanup = () => {
+    // تمام listeners را پاک کن
+    keyListeners.clear();
+    globalListeners.clear();
+
+    // State را reset کن
+    state = {} as T;
+
+    // Flag را set کن
+    isDestroyed = true;
+
+    console.log("Store has been cleaned up and destroyed");
+  };
+
+  // 🆕 Check کردن destroyed بودن
+  const checkIsDestroyed = () => isDestroyed;
+
   const useStore = (): [T, (partial: PartialState<T>) => void] => {
     const [localState, setLocalState] = useState<T>(() => getState());
     const mountedRef = useRef(true);
 
     useEffect(() => {
-      setLocalState(getState());
+      if (isDestroyed) return;
 
+      setLocalState(getState());
       const unsubscribe = subscribe((newState: T) => {
-        // Prevent setState on unmounted components
-        if (mountedRef.current) {
+        if (mountedRef.current && !isDestroyed) {
           setLocalState(newState);
         }
       });
@@ -120,7 +150,6 @@ const createStore = <T extends State>(
       };
     }, []);
 
-    // Track component mount status
     useEffect(() => {
       return () => {
         mountedRef.current = false;
@@ -130,7 +159,6 @@ const createStore = <T extends State>(
     return [localState, setState];
   };
 
-  // Optimized useStoreKey with stable references
   const useStoreKey = <K extends keyof T>(
     key: K
   ): [T[K], (value: SetStateAction<T[K]>) => void] => {
@@ -138,10 +166,11 @@ const createStore = <T extends State>(
     const mountedRef = useRef(true);
 
     useEffect(() => {
-      setValue(getState(key));
+      if (isDestroyed) return;
 
+      setValue(getState(key));
       const unsubscribe = subscribe(key as string, (newValue: T[K]) => {
-        if (mountedRef.current) {
+        if (mountedRef.current && !isDestroyed) {
           setValue(newValue);
         }
       });
@@ -151,9 +180,10 @@ const createStore = <T extends State>(
       };
     }, [key]);
 
-    // Optimized setter with better closure handling
     const setKeyValue = useCallback(
       (newValue: SetStateAction<T[K]>) => {
+        if (isDestroyed) return;
+
         setState(
           (prevState) =>
             ({
@@ -167,7 +197,6 @@ const createStore = <T extends State>(
       [key]
     );
 
-    // Track mount status
     useEffect(() => {
       return () => {
         mountedRef.current = false;
@@ -177,7 +206,6 @@ const createStore = <T extends State>(
     return [value, setKeyValue];
   };
 
-  // Optimized useStoreKeys with better performance
   const useStoreKeys = <K extends keyof T>(
     keys: K[]
   ): [
@@ -188,10 +216,7 @@ const createStore = <T extends State>(
         | ((values: Pick<T, K>) => Partial<Pick<T, K>>)
     ) => void
   ] => {
-    // Stabilize keys array to prevent unnecessary re-renders
     const stableKeys = useMemo(() => [...keys], [keys.join(",")]);
-
-    // Create initial values
     const [values, setValues] = useState<Pick<T, K>>(() => {
       const result = {} as Pick<T, K>;
       stableKeys.forEach((key) => {
@@ -203,17 +228,17 @@ const createStore = <T extends State>(
     const mountedRef = useRef(true);
 
     useEffect(() => {
-      // Set initial values
+      if (isDestroyed) return;
+
       const initialValues = {} as Pick<T, K>;
       stableKeys.forEach((key) => {
         initialValues[key] = getState(key);
       });
       setValues(initialValues);
 
-      // Subscribe to each key
       const unsubscribes = stableKeys.map((key) =>
         subscribe(key as string, (newValue: T[K]) => {
-          if (mountedRef.current) {
+          if (mountedRef.current && !isDestroyed) {
             setValues((prev) => ({ ...prev, [key]: newValue }));
           }
         })
@@ -228,11 +253,12 @@ const createStore = <T extends State>(
           | Partial<Pick<T, K>>
           | ((values: Pick<T, K>) => Partial<Pick<T, K>>)
       ) => {
+        if (isDestroyed) return;
+
         const result =
           typeof updates === "function" ? updates(values) : updates;
-
-        // Filter only the keys we're subscribed to
         const filteredUpdates: Record<string, any> = {};
+
         Object.keys(result).forEach((key) => {
           if (stableKeys.includes(key as K)) {
             filteredUpdates[key] = result[key as keyof typeof result];
@@ -246,7 +272,6 @@ const createStore = <T extends State>(
       [stableKeys.join(","), values]
     );
 
-    // Track mount status
     useEffect(() => {
       return () => {
         mountedRef.current = false;
@@ -263,7 +288,20 @@ const createStore = <T extends State>(
     useStore,
     useStoreKey,
     useStoreKeys,
+    cleanup, // 🆕 Cleanup method
+    isDestroyed: checkIsDestroyed, // 🆕 Check destroyed status
   };
 };
 
 export default createStore;
+
+// 🆕 نحوه استفاده:
+// const store = createStore({ count: 0 });
+//
+// // وقتی می‌خوای store رو کاملاً پاک کنی:
+// store.cleanup();
+//
+// // چک کردن destroyed بودن:
+// if (store.isDestroyed()) {
+//   console.log('Store is destroyed');
+// }
