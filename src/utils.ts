@@ -9,9 +9,19 @@ export const isEqual = (a: any, b: any): boolean => {
     return a.length === b.length && a.every((v, i) => isEqual(v, b[i]));
   }
 
+  // If one is array and other isn't, they're not equal
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return false;
+  }
+
   // Handle dates
   if (a instanceof Date && b instanceof Date) {
     return a.getTime() === b.getTime();
+  }
+
+  // If one is date and other isn't, they're not equal
+  if (a instanceof Date || b instanceof Date) {
+    return false;
   }
 
   // Handle objects
