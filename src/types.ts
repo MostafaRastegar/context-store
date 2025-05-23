@@ -11,6 +11,8 @@ export type PartialState<T extends State> =
 export type SetStateAction<T> = T | ((prev: T) => T);
 
 export interface StoreAPI<T extends State> {
+  cleanup(): void;
+  isDestroyed(): boolean;
   getState(): T;
   getState<K extends keyof T>(key: K): T[K];
   setState(partial: PartialState<T>): void;

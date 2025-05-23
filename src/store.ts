@@ -1,5 +1,3 @@
-// پیشنهاد: اضافه کردن cleanup method به store
-
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type {
   State,
@@ -11,15 +9,9 @@ import type {
 } from "./types";
 import { isEqual } from "./utils";
 
-// Enhanced StoreAPI with cleanup
-interface EnhancedStoreAPI<T extends State> extends StoreAPI<T> {
-  cleanup(): void;
-  isDestroyed(): boolean;
-}
-
 const createStore = <T extends State>(
   initialState: T | (() => T)
-): EnhancedStoreAPI<T> => {
+): StoreAPI<T> => {
   let state: T =
     typeof initialState === "function"
       ? (initialState as () => T)()
@@ -28,7 +20,7 @@ const createStore = <T extends State>(
   const keyListeners = new Map<string, Set<Listener>>();
   const globalListeners = new Set<GlobalListener<T>>();
 
-  // Flag برای چک کردن destroyed بودن store
+  // check store is isDestroyed or not
   let isDestroyed = false;
 
   const notify = (changedKeys: string[]) => {
@@ -110,24 +102,18 @@ const createStore = <T extends State>(
         }
       }
     };
-  }) as EnhancedStoreAPI<T>["subscribe"];
+  }) as StoreAPI<T>["subscribe"];
 
-  // 🆕 Cleanup method برای پاک کردن کامل store
   const cleanup = () => {
-    // تمام listeners را پاک کن
     keyListeners.clear();
     globalListeners.clear();
 
-    // State را reset کن
     state = {} as T;
-
-    // Flag را set کن
     isDestroyed = true;
 
     console.log("Store has been cleaned up and destroyed");
   };
 
-  // 🆕 Check کردن destroyed بودن
   const checkIsDestroyed = () => isDestroyed;
 
   const useStore = (): [T, (partial: PartialState<T>) => void] => {
@@ -288,20 +274,15 @@ const createStore = <T extends State>(
     useStore,
     useStoreKey,
     useStoreKeys,
-    cleanup, // 🆕 Cleanup method
-    isDestroyed: checkIsDestroyed, // 🆕 Check destroyed status
+    cleanup,
+    isDestroyed: checkIsDestroyed,
   };
 };
 
 export default createStore;
 
-// 🆕 نحوه استفاده:
 // const store = createStore({ count: 0 });
-//
-// // وقتی می‌خوای store رو کاملاً پاک کنی:
-// store.cleanup();
-//
-// // چک کردن destroyed بودن:
-// if (store.isDestroyed()) {
+//// store.cleanup();
+//// if (store.isDestroyed()) {
 //   console.log('Store is destroyed');
 // }
