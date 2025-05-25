@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type {
   State,
   StoreAPI,
@@ -20,11 +20,8 @@ const createStore = <T extends State>(
   const keyListeners = new Map<string, Set<Listener>>();
   const globalListeners = new Set<GlobalListener<T>>();
 
-  // check store is isDestroyed or not
-  let isDestroyed = false;
-
   const notify = (changedKeys: string[]) => {
-    if (isDestroyed || changedKeys.length === 0) return;
+    if (changedKeys.length === 0) return;
 
     changedKeys.forEach((key) => {
       const listeners = keyListeners.get(key);
@@ -39,36 +36,25 @@ const createStore = <T extends State>(
   function getState(): T;
   function getState<K extends keyof T>(key: K): T[K];
   function getState<K extends keyof T>(key?: K) {
-    if (isDestroyed) {
-      console.warn("Store has been destroyed");
-      return key === undefined ? ({} as T) : (undefined as T[K]);
-    }
     return key === undefined ? state : state[key];
   }
 
   const setState = (partial: PartialState<T>) => {
-    if (isDestroyed) {
-      console.warn("Cannot setState on destroyed store");
-      return;
-    }
-
     const nextState = typeof partial === "function" ? partial(state) : partial;
     if (!nextState || typeof nextState !== "object") return;
 
     const changedKeys: string[] = [];
-    const updates: Record<string, any> = {};
     let hasChanges = false;
 
     Object.keys(nextState).forEach((key) => {
       if (!isEqual(state[key], nextState[key])) {
-        updates[key] = nextState[key];
         changedKeys.push(key);
         hasChanges = true;
       }
     });
 
     if (hasChanges) {
-      state = { ...state, ...updates } as T;
+      state = { ...state, ...nextState } as T;
       notify(changedKeys);
     }
   };
@@ -77,11 +63,6 @@ const createStore = <T extends State>(
     keyOrListener: string | GlobalListener<T>,
     listener?: Listener
   ) => {
-    if (isDestroyed) {
-      console.warn("Cannot subscribe to destroyed store");
-      return () => {};
-    }
-
     if (typeof keyOrListener === "function") {
       globalListeners.add(keyOrListener);
       return () => globalListeners.delete(keyOrListener);
@@ -104,42 +85,12 @@ const createStore = <T extends State>(
     };
   }) as StoreAPI<T>["subscribe"];
 
-  const cleanup = () => {
-    keyListeners.clear();
-    globalListeners.clear();
-
-    state = {} as T;
-    isDestroyed = true;
-
-    console.log("Store has been cleaned up and destroyed");
-  };
-
-  const checkIsDestroyed = () => isDestroyed;
-
   const useStore = (): [T, (partial: PartialState<T>) => void] => {
-    const [localState, setLocalState] = useState<T>(() => getState());
-    const mountedRef = useRef(true);
+    const [localState, setLocalState] = useState<T>(state);
 
     useEffect(() => {
-      if (isDestroyed) return;
-
-      setLocalState(getState());
-      const unsubscribe = subscribe((newState: T) => {
-        if (mountedRef.current && !isDestroyed) {
-          setLocalState(newState);
-        }
-      });
-
-      return () => {
-        mountedRef.current = false;
-        unsubscribe();
-      };
-    }, []);
-
-    useEffect(() => {
-      return () => {
-        mountedRef.current = false;
-      };
+      setLocalState(state);
+      return subscribe(setLocalState);
     }, []);
 
     return [localState, setState];
@@ -148,28 +99,25 @@ const createStore = <T extends State>(
   const useStoreKey = <K extends keyof T>(
     key: K
   ): [T[K], (value: SetStateAction<T[K]>) => void] => {
-    const [value, setValue] = useState<T[K]>(() => getState(key));
+    const [value, setValue] = useState<T[K]>(state[key]);
     const mountedRef = useRef(true);
 
     useEffect(() => {
-      if (isDestroyed) return;
-
-      setValue(getState(key));
+      setValue(state[key]);
       const unsubscribe = subscribe(key as string, (newValue: T[K]) => {
-        if (mountedRef.current && !isDestroyed) {
+        if (mountedRef.current) {
           setValue(newValue);
         }
       });
 
       return () => {
+        mountedRef.current = false;
         unsubscribe();
       };
     }, [key]);
 
     const setKeyValue = useCallback(
       (newValue: SetStateAction<T[K]>) => {
-        if (isDestroyed) return;
-
         setState(
           (prevState) =>
             ({
@@ -182,12 +130,6 @@ const createStore = <T extends State>(
       },
       [key]
     );
-
-    useEffect(() => {
-      return () => {
-        mountedRef.current = false;
-      };
-    }, []);
 
     return [value, setKeyValue];
   };
@@ -202,36 +144,33 @@ const createStore = <T extends State>(
         | ((values: Pick<T, K>) => Partial<Pick<T, K>>)
     ) => void
   ] => {
-    const stableKeys = useMemo(() => [...keys], [keys.join(",")]);
-    const [values, setValues] = useState<Pick<T, K>>(() => {
+    const keysDep = keys.join(",");
+    const getValues = () => {
       const result = {} as Pick<T, K>;
-      stableKeys.forEach((key) => {
-        result[key] = getState(key);
+      keys.forEach((key) => {
+        result[key] = state[key];
       });
       return result;
-    });
+    };
 
+    const [values, setValues] = useState<Pick<T, K>>(getValues);
     const mountedRef = useRef(true);
 
     useEffect(() => {
-      if (isDestroyed) return;
-
-      const initialValues = {} as Pick<T, K>;
-      stableKeys.forEach((key) => {
-        initialValues[key] = getState(key);
-      });
-      setValues(initialValues);
-
-      const unsubscribes = stableKeys.map((key) =>
-        subscribe(key as string, (newValue: T[K]) => {
-          if (mountedRef.current && !isDestroyed) {
-            setValues((prev) => ({ ...prev, [key]: newValue }));
+      setValues(getValues());
+      const unsubscribes = keys.map((key) =>
+        subscribe(key as string, () => {
+          if (mountedRef.current) {
+            setValues((prev) => ({ ...prev, [key]: state[key] }));
           }
         })
       );
 
-      return () => unsubscribes.forEach((unsub) => unsub());
-    }, [stableKeys.join(",")]);
+      return () => {
+        mountedRef.current = false;
+        unsubscribes.forEach((unsub) => unsub());
+      };
+    }, [keysDep]);
 
     const setKeyValues = useCallback(
       (
@@ -239,30 +178,22 @@ const createStore = <T extends State>(
           | Partial<Pick<T, K>>
           | ((values: Pick<T, K>) => Partial<Pick<T, K>>)
       ) => {
-        if (isDestroyed) return;
-
         const result =
           typeof updates === "function" ? updates(values) : updates;
-        const filteredUpdates: Record<string, any> = {};
 
-        Object.keys(result).forEach((key) => {
-          if (stableKeys.includes(key as K)) {
-            filteredUpdates[key] = result[key as keyof typeof result];
+        const filteredUpdates = Object.keys(result).reduce((acc, key) => {
+          if (keys.includes(key as K)) {
+            acc[key] = result[key as keyof typeof result];
           }
-        });
+          return acc;
+        }, {} as Record<string, any>);
 
         if (Object.keys(filteredUpdates).length > 0) {
           setState(filteredUpdates as Partial<T>);
         }
       },
-      [stableKeys.join(","), values]
+      [keysDep, values]
     );
-
-    useEffect(() => {
-      return () => {
-        mountedRef.current = false;
-      };
-    }, []);
 
     return [values, setKeyValues];
   };
@@ -274,15 +205,7 @@ const createStore = <T extends State>(
     useStore,
     useStoreKey,
     useStoreKeys,
-    cleanup,
-    isDestroyed: checkIsDestroyed,
   };
 };
 
 export default createStore;
-
-// const store = createStore({ count: 0 });
-//// store.cleanup();
-//// if (store.isDestroyed()) {
-//   console.log('Store is destroyed');
-// }
