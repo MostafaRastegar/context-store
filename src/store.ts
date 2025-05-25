@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type {
   State,
   StoreAPI,
@@ -12,19 +12,17 @@ import { isEqual } from "./utils";
 const createStore = <T extends State>(
   initialState: T | (() => T)
 ): StoreAPI<T> => {
-  // Initialize state
   let state: T =
     typeof initialState === "function"
       ? (initialState as () => T)()
       : initialState;
 
-  // Listeners storage
   const keyListeners = new Map<string, Set<Listener>>();
   const globalListeners = new Set<GlobalListener<T>>();
 
-  // Notify listeners about changes
   const notify = (changedKeys: string[]) => {
-    // Notify key-specific listeners
+    if (changedKeys.length === 0) return;
+
     changedKeys.forEach((key) => {
       const listeners = keyListeners.get(key);
       if (listeners) {
@@ -32,52 +30,44 @@ const createStore = <T extends State>(
       }
     });
 
-    // Notify global listeners
-    if (changedKeys.length > 0) {
-      globalListeners.forEach((listener) => listener(state));
-    }
+    globalListeners.forEach((listener) => listener(state));
   };
 
-  // Get current state or specific key
   function getState(): T;
   function getState<K extends keyof T>(key: K): T[K];
   function getState<K extends keyof T>(key?: K) {
     return key === undefined ? state : state[key];
   }
 
-  // Update state
   const setState = (partial: PartialState<T>) => {
     const nextState = typeof partial === "function" ? partial(state) : partial;
     if (!nextState || typeof nextState !== "object") return;
 
     const changedKeys: string[] = [];
+    let hasChanges = false;
 
-    // Check each key for changes
     Object.keys(nextState).forEach((key) => {
       if (!isEqual(state[key], nextState[key])) {
-        state = { ...state, [key]: nextState[key] } as T;
         changedKeys.push(key);
+        hasChanges = true;
       }
     });
 
-    // Notify only if there were changes
-    if (changedKeys.length > 0) {
+    if (hasChanges) {
+      state = { ...state, ...nextState } as T;
       notify(changedKeys);
     }
   };
 
-  // Subscribe to changes
   const subscribe = ((
     keyOrListener: string | GlobalListener<T>,
     listener?: Listener
   ) => {
-    // Global listener
     if (typeof keyOrListener === "function") {
       globalListeners.add(keyOrListener);
       return () => globalListeners.delete(keyOrListener);
     }
 
-    // Key-specific listener
     const key = keyOrListener;
     if (!keyListeners.has(key)) {
       keyListeners.set(key, new Set());
@@ -95,49 +85,33 @@ const createStore = <T extends State>(
     };
   }) as StoreAPI<T>["subscribe"];
 
-  // Hook to use entire store
   const useStore = (): [T, (partial: PartialState<T>) => void] => {
-    const [localState, setLocalState] = useState<T>(() => getState());
-    const isMounted = useRef<boolean>(false);
+    const [localState, setLocalState] = useState<T>(state);
 
     useEffect(() => {
-      isMounted.current = true;
-      setLocalState(getState());
-
-      const unsubscribe = subscribe((newState: T) => {
-        if (isMounted.current) {
-          setLocalState(newState);
-        }
-      });
-
-      return () => {
-        isMounted.current = false;
-        unsubscribe();
-      };
+      setLocalState(state);
+      return subscribe(setLocalState);
     }, []);
 
-    return [localState, useCallback(setState, [])];
+    return [localState, setState];
   };
 
-  // Hook to use specific key
   const useStoreKey = <K extends keyof T>(
     key: K
   ): [T[K], (value: SetStateAction<T[K]>) => void] => {
-    const [value, setValue] = useState<T[K]>(() => getState(key));
-    const isMounted = useRef<boolean>(false);
+    const [value, setValue] = useState<T[K]>(state[key]);
+    const mountedRef = useRef(true);
 
     useEffect(() => {
-      isMounted.current = true;
-      setValue(getState(key));
-
+      setValue(state[key]);
       const unsubscribe = subscribe(key as string, (newValue: T[K]) => {
-        if (isMounted.current) {
+        if (mountedRef.current) {
           setValue(newValue);
         }
       });
 
       return () => {
-        isMounted.current = false;
+        mountedRef.current = false;
         unsubscribe();
       };
     }, [key]);
@@ -147,10 +121,9 @@ const createStore = <T extends State>(
         setState(
           (prevState) =>
             ({
-              ...prevState,
               [key]:
                 typeof newValue === "function"
-                  ? (newValue as Function)(getState(key))
+                  ? (newValue as Function)(prevState[key])
                   : newValue,
             } as Partial<T>)
         );
@@ -161,7 +134,6 @@ const createStore = <T extends State>(
     return [value, setKeyValue];
   };
 
-  // Hook to use multiple keys
   const useStoreKeys = <K extends keyof T>(
     keys: K[]
   ): [
@@ -172,41 +144,33 @@ const createStore = <T extends State>(
         | ((values: Pick<T, K>) => Partial<Pick<T, K>>)
     ) => void
   ] => {
-    const sortedKeys = useMemo(() => [...keys].sort(), [keys.join(",")]);
+    const keysDep = keys.join(",");
+    const getValues = () => {
+      const result = {} as Pick<T, K>;
+      keys.forEach((key) => {
+        result[key] = state[key];
+      });
+      return result;
+    };
 
-    const [values, setValues] = useState<Pick<T, K>>(() => {
-      return sortedKeys.reduce<Pick<T, K>>((acc, key) => {
-        acc[key] = getState(key);
-        return acc;
-      }, {} as Pick<T, K>);
-    });
-
-    const isMounted = useRef<boolean>(false);
+    const [values, setValues] = useState<Pick<T, K>>(getValues);
+    const mountedRef = useRef(true);
 
     useEffect(() => {
-      isMounted.current = true;
-
-      // Set initial values
-      const initialValues = sortedKeys.reduce<Pick<T, K>>((acc, key) => {
-        acc[key] = getState(key);
-        return acc;
-      }, {} as Pick<T, K>);
-      setValues(initialValues);
-
-      // Subscribe to each key
-      const unsubscribes: (() => void)[] = sortedKeys.map((key) =>
-        subscribe(key as string, (newValue: T[K]) => {
-          if (isMounted.current) {
-            setValues((prev) => ({ ...prev, [key]: newValue }));
+      setValues(getValues());
+      const unsubscribes = keys.map((key) =>
+        subscribe(key as string, () => {
+          if (mountedRef.current) {
+            setValues((prev) => ({ ...prev, [key]: state[key] }));
           }
         })
       );
 
       return () => {
-        isMounted.current = false;
-        unsubscribes.forEach((unsub: () => void) => unsub());
+        mountedRef.current = false;
+        unsubscribes.forEach((unsub) => unsub());
       };
-    }, [sortedKeys.join(",")]);
+    }, [keysDep]);
 
     const setKeyValues = useCallback(
       (
@@ -216,19 +180,19 @@ const createStore = <T extends State>(
       ) => {
         const result =
           typeof updates === "function" ? updates(values) : updates;
-        const filteredUpdates: Record<string, any> = {};
 
-        Object.keys(result).forEach((key) => {
-          if (sortedKeys.includes(key as K)) {
-            filteredUpdates[key] = result[key as keyof typeof result];
+        const filteredUpdates = Object.keys(result).reduce((acc, key) => {
+          if (keys.includes(key as K)) {
+            acc[key] = result[key as keyof typeof result];
           }
-        });
+          return acc;
+        }, {} as Record<string, any>);
 
         if (Object.keys(filteredUpdates).length > 0) {
           setState(filteredUpdates as Partial<T>);
         }
       },
-      [sortedKeys.join(","), values]
+      [keysDep, values]
     );
 
     return [values, setKeyValues];
