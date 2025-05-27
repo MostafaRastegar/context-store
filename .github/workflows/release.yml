@@ -1,10 +1,10 @@
 name: Release
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches:
       - main
       - next
-
 
 permissions:
   contents: write
@@ -14,14 +14,27 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Only run if PR was merged (not just closed)
+    if: github.event.pull_request.merged == true
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for semantic-release
+          ref: ${{ github.event.pull_request.base.ref }}  # Checkout the target branch
+          
       - uses: actions/setup-node@v4
         with:
           node-version: "22.x"
+          cache: 'npm'
+          
       - run: npm ci
       - run: npm run build
       - run: npm audit signatures
+      
+      # Optional: Run tests before release
+      - name: Run tests
+        run: npm run test:ci
+        
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
