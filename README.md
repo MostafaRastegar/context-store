@@ -2,29 +2,30 @@
 
 ⚡ **Ultra-lightweight state management for React 18+ applications (~950B gzipped)**
 
-<!-- Project Status Badges -->
-[![NPM Version](https://img.shields.io/npm/v/react-constore?style=flat&logo=npm&color=red)](https://www.npmjs.com/package/react-constore)
-[![NPM Downloads](https://img.shields.io/npm/dm/react-constore?style=flat&logo=npm&color=orange)](https://www.npmjs.com/package/react-constore)
-[![Bundle Size](https://img.shields.io/bundlephobia/minzip/react-constore?style=flat&logo=webpack&color=success)](https://bundlephobia.com/package/react-constore)
-[![GitHub Stars](https://img.shields.io/github/stars/mostafarastegar/react-constore?style=flat&logo=github&color=yellow)](https://github.com/mostafarastegar/react-constore)
+## 📊 Quick Stats
 
-<!-- Technical Badges -->
-[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue?style=flat&logo=typescript)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18%2B-blue?style=flat&logo=react)](https://reactjs.org/)
-[![Tree Shaking](https://img.shields.io/badge/Tree%20Shaking-✅-green?style=flat)](https://developer.mozilla.org/en-US/docs/Glossary/Tree_shaking)
-[![SSR](https://img.shields.io/badge/SSR-Ready-green?style=flat&logo=next.js)](https://nextjs.org/)
+| 📦 NPM Package | 📏 Bundle Size | ⭐ GitHub Stars | 📥 Downloads |
+|----------------|----------------|-----------------|--------------|
+| [react-constore](https://www.npmjs.com/package/react-constore) | **~950B gzipped** | [⭐ Star us!](https://github.com/mostafarastegar/react-constore/stargazers) | [📈 NPM Trends](https://npmtrends.com/react-constore) |
 
-<!-- Quality Badges -->
-[![Build Status](https://img.shields.io/github/actions/workflow/status/mostafarastegar/react-constore/ci.yml?style=flat&logo=github-actions)](https://github.com/mostafarastegar/react-constore/actions)
-[![Test Coverage](https://img.shields.io/badge/Coverage-95%25-brightgreen?style=flat&logo=jest)](https://github.com/mostafarastegar/react-constore)
-[![Code Quality](https://img.shields.io/badge/Code%20Quality-A+-brightgreen?style=flat&logo=codeclimate)](https://github.com/mostafarastegar/react-constore)
-[![Zero Dependencies](https://img.shields.io/badge/Dependencies-Zero-success?style=flat)](https://github.com/mostafarastegar/react-constore/blob/main/package.json)
+## ✅ Features
 
-<!-- Community & License -->
-[![MIT License](https://img.shields.io/badge/License-MIT-blue?style=flat&logo=open-source-initiative)](https://github.com/mostafarastegar/react-constore/blob/main/LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat&logo=github)](https://github.com/mostafarastegar/react-constore/pulls)
-[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/react-constore)
-[![Last Commit](https://img.shields.io/github/last-commit/mostafarastegar/react-constore?style=flat&logo=git)](https://github.com/mostafarastegar/react-constore)
+- ✅ **TypeScript Ready** - Full type safety out of the box
+- ✅ **React 18+ Compatible** - Concurrent features supported  
+- ✅ **Zero Dependencies** - No external packages needed
+- ✅ **SSR Ready** - Works with Next.js App Router
+- ✅ **Tree Shakeable** - Only bundle what you use
+- ✅ **MIT Licensed** - Free for commercial use
+
+## 🔗 Quick Links
+
+- 📖 **Documentation**: [GitHub Repository](https://github.com/mostafarastegar/react-constore)
+- 📦 **Install**: `npm install react-constore`
+- 📊 **Bundle Analysis**: [Bundle Phobia](https://bundlephobia.com/package/react-constore)
+- 📈 **Download Stats**: [NPM Package](https://www.npmjs.com/package/react-constore)
+- 🐛 **Issues & Support**: [GitHub Issues](https://github.com/mostafarastegar/react-constore/issues)
+
+---
 
 ## 📋 Table of Contents
 
@@ -1305,12 +1306,6 @@ const store = createStore<AppState>({ count: 0 }); // ✅ Typed
 - 🤔 **Jotai**: Bottom-up atomic state management
 - 🤔 **Context API**: Very simple, component-local state
 
-## 🔗 Resources
-
-- [📖 API Documentation](https://github.com/mostafarastegar/react-constore)
-- [🎮 Interactive Examples](https://codesandbox.io/react-constore-examples)
-- [💬 Community Discord](https://discord.gg/react-constore)
-- [🐛 Report Issues](https://github.com/mostafarastegar/react-constore/issues)
 
 ## 📄 License
 
