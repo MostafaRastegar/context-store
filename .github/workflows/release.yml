@@ -18,8 +18,9 @@ jobs:
   release:
     runs-on: ubuntu-latest
     if: |
-      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
-    
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main'
+
     steps:
       - name: 🔍 Debug Info
         run: |
