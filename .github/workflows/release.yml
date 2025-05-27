@@ -5,38 +5,73 @@ on:
     branches:
       - main
       - next
+  push:
+    branches:
+      - main
+      - next
 
 permissions:
   contents: write
   issues: write
   pull-requests: write
+  packages: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    # Only run if PR was merged (not just closed)
-    if: github.event.pull_request.merged == true
+    if: |
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true) ||
+      (github.event_name == 'push')
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: 🔍 Debug Info
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Merged: ${{ github.event.pull_request.merged }}"
+
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Required for semantic-release
-          ref: ${{ github.event.pull_request.base.ref }}  # Checkout the target branch
+          token: ${{ secrets.GITHUB_TOKEN }}
           
-      - uses: actions/setup-node@v4
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: "22.x"
           cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
           
-      - run: npm ci
-      - run: npm run build
-      - run: npm audit signatures
+      - name: 📋 Install dependencies
+        run: npm ci
+
+      - name: 🏗️ Build
+        run: npm run build
+        
+      - name: 🔐 Audit
+        run: npm audit signatures
       
-      # Optional: Run tests before release
-      - name: Run tests
+      - name: 🧪 Run tests
         run: npm run test:ci
         
-      - name: Release
+      - name: 🔍 Debug semantic-release (dry-run)
+        run: npx semantic-release --dry-run
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        
+      - name: 🚀 Release
         run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 📊 Release Status
+        if: always()
+        run: |
+          echo "✅ Release workflow completed"
+          echo "Check the logs above for any issues"
