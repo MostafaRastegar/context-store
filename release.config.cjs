@@ -29,7 +29,7 @@ module.exports = {
 
           // No release for these
           { type: "style", release: false },
-          { type: "chore", release: false },
+          { type: "chore", release: "patch" },
           { type: "test", release: false },
           { type: "ci", release: false },
           { type: "build", release: false },
