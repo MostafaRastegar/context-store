@@ -26,7 +26,6 @@
 - 🐛 **Issues & Support**: [GitHub Issues](https://github.com/mostafarastegar/react-constore/issues)
 
 ---
-
 ## 📋 Table of Contents
 
 ### 🚀 Getting Started
