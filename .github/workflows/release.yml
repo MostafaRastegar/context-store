@@ -1,12 +1,10 @@
+# .github/workflows/release.yml
 name: Release
 on:
-  pull_request:
-    types: [closed]
-    branches:
-      - main
   push:
     branches:
       - main
+  # حذف pull_request trigger برای جلوگیری از اجرای مضاعف
 
 permissions:
   contents: write
@@ -17,9 +15,15 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # شرط بهبود یافته - فقط زمانی اجرا شود که:
+    # 1. Push روی main باشد
+    # 2. Push توسط merge PR باشد (نه push مستقیم)
     if: |
-      github.event.pull_request.merged == true &&
-      github.event.pull_request.base.ref == 'main'
+      github.ref == 'refs/heads/main' && 
+      (
+        github.event_name == 'push' && 
+        contains(github.event.head_commit.message, 'Merge pull request')
+      )
 
     steps:
       - name: 🔍 Debug Info
@@ -27,12 +31,13 @@ jobs:
           echo "Event: ${{ github.event_name }}"
           echo "Ref: ${{ github.ref }}"
           echo "Branch: ${{ github.ref_name }}"
-          echo "Merged: ${{ github.event.pull_request.merged }}"
+          echo "Commit Message: ${{ github.event.head_commit.message }}"
+          echo "Actor: ${{ github.actor }}"
 
       - name: 📥 Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Required for semantic-release
+          fetch-depth: 0  # برای semantic-release ضروری است
           token: ${{ secrets.GITHUB_TOKEN }}
           
       - name: 📦 Setup Node.js
@@ -54,15 +59,27 @@ jobs:
       - name: 🧪 Run tests
         run: npm run test:ci
         
+      # افزودن step برای بررسی commit messages
+      - name: 🔍 Check Recent Commits
+        run: |
+          echo "Last 5 commits:"
+          git log --oneline -5
+          echo "Checking for conventional commits..."
+          git log --pretty=format:"%s" -10 | head -5
+        
       - name: 🔍 Debug semantic-release (dry-run)
-        run: npx semantic-release --dry-run
+        run: |
+          echo "Running semantic-release in dry-run mode..."
+          npx semantic-release --dry-run --debug
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         
       - name: 🚀 Release
-        run: npx semantic-release
+        run: |
+          echo "Running semantic-release..."
+          npx semantic-release --debug
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
