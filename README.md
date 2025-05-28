@@ -1184,10 +1184,10 @@ describe('Store Tests', () => {
 | Library | Size (gzipped) | Features |
 |---------|----------------|----------|
 | **React ConStore** | **~950B** | ✅ Hooks, TypeScript, SSR |
-| Redux Toolkit | ~2.5KB | ✅ DevTools, Middleware |
-| Zustand | ~2.1KB | ✅ Immer, Persist |
-| Jotai | ~2.8KB | ✅ Atomic, Suspense |
-| Valtio | ~3.2KB | ✅ Proxy-based |
+| Redux Toolkit | ~3KB | ✅ DevTools, Middleware |
+| Zustand | ~600B | ✅ Immer, Persist |
+| Jotai | ~4KB | ✅ Atomic, Suspense |
+| Valtio | ~2.7KB | ✅ Proxy-based |
 
 ## 🚨 Troubleshooting
 
