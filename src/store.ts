@@ -19,10 +19,12 @@ const createStore = <T extends State>(
 
   const keyListeners = new Map<string, Set<Listener>>();
   const globalListeners = new Set<GlobalListener<T>>();
+  let globalChangedKeys = "";
 
   const notify = (changedKeys: string[]) => {
     if (changedKeys.length === 0) return;
 
+    globalChangedKeys = changedKeys.join(",");
     changedKeys.forEach((key) => {
       const listeners = keyListeners.get(key);
       if (listeners) {
@@ -85,7 +87,7 @@ const createStore = <T extends State>(
     };
   }) as StoreAPI<T>["subscribe"];
 
-  const useStore = (): [T, (partial: PartialState<T>) => void] => {
+  const useStore = (() => {
     const [localState, setLocalState] = useState<T>(state);
 
     useEffect(() => {
@@ -93,8 +95,8 @@ const createStore = <T extends State>(
       return subscribe(setLocalState);
     }, []);
 
-    return [localState, setState];
-  };
+    return { state: localState, setState, changedKey: globalChangedKeys };
+  }) as StoreAPI<T>["useStore"];
 
   const useStoreKey = <K extends keyof T>(
     key: K

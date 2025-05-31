@@ -16,7 +16,11 @@ export interface StoreAPI<T extends State> {
   setState(partial: PartialState<T>): void;
   subscribe(listener: GlobalListener<T>): () => void;
   subscribe(key: string, listener: Listener): () => void;
-  useStore(): [T, (partial: PartialState<T>) => void];
+  useStore(): {
+    state: T;
+    setState: (partial: PartialState<T>) => void;
+    changedKey: string;
+  };
   useStoreKey<K extends keyof T>(
     key: K
   ): [T[K], (value: SetStateAction<T[K]>) => void];
