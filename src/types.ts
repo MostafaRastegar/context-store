@@ -19,7 +19,7 @@ export interface StoreAPI<T extends State> {
   useStore(): {
     state: T;
     setState: (partial: PartialState<T>) => void;
-    changedKey: string;
+    changedKey: keyof T;
   };
   useStoreKey<K extends keyof T>(
     key: K

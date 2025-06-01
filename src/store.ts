@@ -19,7 +19,7 @@ const createStore = <T extends State>(
 
   const keyListeners = new Map<string, Set<Listener>>();
   const globalListeners = new Set<GlobalListener<T>>();
-  let globalChangedKeys = "";
+  let globalChangedKeys = "" as unknown as keyof T;
 
   const notify = (changedKeys: string[]) => {
     if (changedKeys.length === 0) return;
