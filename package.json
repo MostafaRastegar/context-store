@@ -13,26 +13,35 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.mjs"
-      },
-      "require": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      }
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./middlewares": {
+      "types": "./middlewares/index.d.ts",
+      "import": "./middlewares/index.ts",
+      "require": "./middlewares/index.ts"
+    },
+    "./middlewares/*": {
+      "types": "./middlewares/*.d.ts",
+      "import": "./middlewares/*.ts",
+      "require": "./middlewares/*.ts"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "middlewares",
+    "README.md",
+    "LICENSE"
   ],
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
     "semantic-release": "semantic-release",
-    "build": "tsup src/index.ts --format cjs,esm --dts --clean --minify --treeshake",
-    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean --minify --treeshake && npm run copy-middlewares",
+    "copy-middlewares": "cp -r src/middlewares middlewares",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch && npm run copy-middlewares",
     "prepare": "npm run build",
     "type-check": "tsc --noEmit",
     "size": "size-limit",
