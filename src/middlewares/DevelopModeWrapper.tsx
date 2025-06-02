@@ -1,4 +1,6 @@
-import { StoreAPI } from 'react-constore';
+"use client";
+
+import type { StoreAPI } from "./types";
 
 // User component
 function ActiveMiddleware({ store }: { store: StoreAPI<any> }) {
@@ -16,7 +18,7 @@ export default function DevelopModeWrapper({
   return (
     <>
       {children}
-      {process.env.NODE_ENV === 'development' && (
+      {process.env.NODE_ENV === "development" && (
         <ActiveMiddleware store={store} />
       )}
     </>

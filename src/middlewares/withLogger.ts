@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
-import { StoreAPI } from 'react-constore';
+import { useEffect } from "react";
+import type { StoreAPI } from "./types";
 
 export const withLogger = <T extends object>(
   storeApi: StoreAPI<T>,
-  name = 'Store',
+  name = "Store"
 ): StoreAPI<T> => {
   const originalUseStore = storeApi.useStore;
 
@@ -17,8 +17,8 @@ export const withLogger = <T extends object>(
     useEffect(() => {
       if (!!changedKey) {
         console.group(`🔄 ${name} Update: [${String(changedKey)}]`);
-        console.log('Payload:', changedKey ? state[changedKey] : 'N/A');
-        console.log('Next:', state);
+        console.log("Payload:", changedKey ? state[changedKey] : "N/A");
+        console.log("Next:", state);
         console.groupEnd();
       }
     }, [state]);

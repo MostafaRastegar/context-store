@@ -21,16 +21,12 @@
       "types": "./middlewares/index.d.ts",
       "import": "./middlewares/index.ts",
       "require": "./middlewares/index.ts"
-    },
-    "./middlewares/*": {
-      "types": "./middlewares/*.d.ts",
-      "import": "./middlewares/*.ts",
-      "require": "./middlewares/*.ts"
     }
   },
   "files": [
     "dist",
     "middlewares",
+    "types.ts",
     "README.md",
     "LICENSE"
   ],
@@ -40,7 +36,7 @@
   "scripts": {
     "semantic-release": "semantic-release",
     "build": "tsup src/index.ts --format cjs,esm --dts --clean --minify --treeshake && npm run copy-middlewares",
-    "copy-middlewares": "cp -r src/middlewares middlewares",
+    "copy-middlewares": "rm -rf middlewares && cp -r src/middlewares middlewares && cp -r src/types.ts middlewares",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch && npm run copy-middlewares",
     "prepare": "npm run build",
     "type-check": "tsc --noEmit",

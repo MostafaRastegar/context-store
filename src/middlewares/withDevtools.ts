@@ -1,13 +1,13 @@
-import { useEffect } from 'react';
-import { StoreAPI } from 'react-constore';
+import { useEffect } from "react";
+import type { StoreAPI } from "./types";
 
 export const withDevtools = <T extends object>(
   storeApi: StoreAPI<T>,
-  name = 'Store',
+  name = "Store"
 ): StoreAPI<T> => {
   if (
-    typeof window === 'undefined' ||
-    process.env.NODE_ENV === 'production' ||
+    typeof window === "undefined" ||
+    process.env.NODE_ENV === "production" ||
     !(window as any).__REDUX_DEVTOOLS_EXTENSION__
   ) {
     return storeApi;
@@ -20,12 +20,12 @@ export const withDevtools = <T extends object>(
   devtools.init(storeApi.getState());
 
   devtools.subscribe((message: any) => {
-    if (message.type === 'DISPATCH' && message.state) {
+    if (message.type === "DISPATCH" && message.state) {
       try {
         const parsed = JSON.parse(message.state);
         storeApi.setState(parsed);
       } catch (err) {
-        console.warn('DevTools parse error', err);
+        console.warn("DevTools parse error", err);
       }
     }
   });
@@ -44,7 +44,7 @@ export const withDevtools = <T extends object>(
           type: `[${name}, ${String(changedKey)}]`,
           payload: state[changedKey],
         },
-        state,
+        state
       );
     }, [state]);
     return { state, setState, changedKey };
