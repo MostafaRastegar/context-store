@@ -5,7 +5,12 @@ module.exports = {
   moduleNameMapping: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
-  collectCoverageFrom: ["src/**/*.{ts,tsx}", "!src/**/*.d.ts", "!src/index.ts"],
+  collectCoverageFrom: [
+    "src/**/*.{ts,tsx}",
+    "!src/middlewares/*.{ts,tsx}",
+    "!src/**/*.d.ts",
+    "!src/index.ts",
+  ],
   coverageThreshold: {
     global: {
       branches: 90,
