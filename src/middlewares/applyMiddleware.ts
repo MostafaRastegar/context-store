@@ -1,4 +1,4 @@
-import { StoreAPI } from 'react-constore';
+import type { StoreAPI } from "./types";
 
 export const applyMiddleware = <T extends object>(
   store: StoreAPI<T>,
