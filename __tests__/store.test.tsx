@@ -170,7 +170,7 @@ describe("React Context Store", () => {
       const store = createStore({ count: 0, user: { name: "Guest" } });
 
       const { result } = renderHook(() => store.useStore());
-      const [state, setState] = result.current;
+      const { state, setState } = result.current;
 
       expect(state).toEqual({ count: 0, user: { name: "Guest" } });
       expect(typeof setState).toBe("function");
@@ -184,7 +184,7 @@ describe("React Context Store", () => {
         store.setState({ count: 5 });
       });
 
-      expect(result.current[0].count).toBe(5);
+      expect(result.current.state.count).toBe(5);
     });
 
     it("should allow updating through returned setState", () => {
@@ -192,10 +192,11 @@ describe("React Context Store", () => {
       const { result } = renderHook(() => store.useStore());
 
       act(() => {
-        result.current[1]({ count: 10 });
+        result.current.setState({ count: 10 });
       });
 
-      expect(result.current[0].count).toBe(10);
+      expect(result.current.state.count).toBe(10);
+      expect(result.current.changedKey).toBe("count");
     });
   });
 
