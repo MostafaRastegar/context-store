@@ -45,6 +45,8 @@ function Counter() {
   return (
     <div>
       // other codes ...
+
+      // work only in process.env.NODE_ENV === 'development'
       <DevelopModeWrapper store={store} />
     </div>
   );
