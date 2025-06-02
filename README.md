@@ -13,6 +13,7 @@
 - ✅ **TypeScript Ready** - Full type safety out of the box
 - ✅ **React 18+ Compatible** - Concurrent features supported  
 - ✅ **Zero Dependencies** - No external packages needed
+- ✅ **Devtools** - use [`Redux-Devtools`](docs/devtools-middleware.md) for debugging
 - ✅ **SSR Ready** - Works with Next.js App Router
 - ✅ **Tree Shakeable** - Only bundle what you use
 - ✅ **MIT Licensed** - Free for commercial use
@@ -136,6 +137,7 @@ function App() {
 - [Store API](docs/store-api.md) - `getState()`, `setState()`, `subscribe()`
 
 ### 🔧 Advanced Usage
+- [DevTools](docs/devtools-middleware.md) - Debugger mode and built-in middlewares
 - [Advanced Patterns](docs/advanced-patterns.md) - Computed values, actions, middleware
 - [React Integration](docs/react-integration.md) - React 18+, Next.js, React Native
 
