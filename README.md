@@ -128,7 +128,7 @@ function App() {
 ## 📚 Documentation
 
 ### 🚀 Getting Started
-- [Installation & Quick Start](docs/getting-started.md)
+- [Installation & Quick Start](#-installation)
 - [Core Concepts](docs/hooks-guide.md)
 
 ### 📖 API Reference
@@ -140,7 +140,7 @@ function App() {
 - [React Integration](docs/react-integration.md) - React 18+, Next.js, React Native
 
 ### 🔄 Migration & Comparison
-- [Migration Guide](docs/migration-guide.md) - From Redux, 
+- [Migration Guide](docs/migration-guide.md) - From Redux, Zustand, React Context API
 
 ### 📚 Best Practices & Help
 - [Best Practices](docs/best-practices.md)
@@ -163,6 +163,8 @@ function App() {
 - ✅ Simple to medium complexity apps
 - ✅ TypeScript-first development
 - ✅ React 18+ features are important
+- ✅ Devtools for debugging
+- ✅ Custom middleware
 
 **Consider alternatives when:**
 - 🤔 **Redux Toolkit**: Need time-travel debugging, complex middleware
