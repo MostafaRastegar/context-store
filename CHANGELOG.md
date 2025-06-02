@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1](https://github.com/mostafarastegar/react-constore/compare/v1.1.0...v1.1.1) (2025-06-02)
+
+
+### Bug Fixes
+
+* resolve middleware type error ([aca6838](https://github.com/mostafarastegar/react-constore/commit/aca6838c851a6e22d8dc532c1beb3a7e021f6ab7))
+
 # [1.1.0](https://github.com/mostafarastegar/react-constore/compare/v1.0.8...v1.1.0) (2025-06-02)
 
 

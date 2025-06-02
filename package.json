@@ -1,6 +1,6 @@
 {
   "name": "react-constore",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Lightweight and efficient state management for React with TypeScript support",
   "author": "Mostafa Rastegar",
   "license": "MIT",
