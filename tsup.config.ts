@@ -1,29 +1,63 @@
 import { defineConfig } from "tsup";
 
-export default defineConfig({
-  entry: ["src/index.ts"],
-  format: ["cjs", "esm"],
-  dts: true,
-  outDir: "dist",
-  clean: true,
-  minify: true,
-  splitting: false,
-  sourcemap: false,
-  external: ["react"],
-  target: "es2020",
-  esbuildOptions(options) {
-    // "use client" directive for Next.js 13+ and React Server Components
-    options.banner = {
-      js: '"use client";',
-    };
-    // Optimize for both React 18 and 19
-    options.jsx = "automatic";
-    options.jsxImportSource = "react";
+export default defineConfig([
+  // Utils - standalone
+  {
+    entry: ["src/utils.ts"],
+    format: ["cjs", "esm"],
+    dts: true,
+    clean: true,
+    minify: true,
+    treeshake: true,
+    outDir: "dist",
   },
-  // React 19 compatibility
-  platform: "browser",
-  // Better tree-shaking for React 19
-  treeshake: {
-    preset: "recommended",
+  // Types - standalone
+  {
+    entry: ["src/types.ts"],
+    format: ["cjs", "esm"],
+    dts: true,
+    clean: true,
+
+    minify: true,
+    treeshake: true,
+    outDir: "dist",
   },
-});
+  // Store - with React as external
+  {
+    entry: ["src/store.ts"],
+    format: ["cjs", "esm"],
+    dts: true,
+    minify: true,
+    clean: true,
+
+    treeshake: true,
+    outDir: "dist",
+    external: ["react", "rect-constore/utils", "react-constore/types"], // 🔥 React نباید bundle بشه!
+  },
+  {
+    entry: ["src/index.ts"],
+    format: ["cjs", "esm"],
+    dts: true,
+    minify: true,
+    treeshake: true,
+    clean: true,
+
+    outDir: "dist",
+    external: ["react", "rect-constore/utils", "react-constore/store"], // 🔥 React نباید bundle بشه!
+  },
+  // Middlewares - with React as external
+  // {
+  //   entry: ["src/middlewares/index.ts"],
+  //   format: ["cjs", "esm"],
+  //   dts: false,
+  //   minify: true,
+  //   treeshake: true,
+  //   outDir: "dist/middlewares",
+  //   external: ["react"], // 🔥 React نباید bundle بشه!
+  //   outExtension({ format }) {
+  //     return {
+  //       js: format === "cjs" ? ".js" : ".mjs",
+  //     };
+  //   },
+  // },
+]);

@@ -35,7 +35,7 @@
   },
   "scripts": {
     "semantic-release": "semantic-release",
-    "build": "tsup src/index.ts --format cjs,esm --dts --clean --minify --treeshake && npm run copy-middlewares",
+    "build": "rm -rf ./dist && tsup src/index.ts src/utils.ts src/store.ts && npm run copy-middlewares",
     "copy-middlewares": "rm -rf middlewares && cp -r src/middlewares middlewares && cp -r src/types.ts middlewares",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch && npm run copy-middlewares",
     "prepare": "npm run build",

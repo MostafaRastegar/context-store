@@ -25,7 +25,11 @@
     "exactOptionalPropertyTypes": false,
     "preserveWatchOutput": true,
     "useDefineForClassFields": true,
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "react-constore": ["./src/index.ts"],
+      "react-constore/*": ["./src/*.ts"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": [

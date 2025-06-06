@@ -7,8 +7,9 @@ import type {
   Listener,
   GlobalListener,
   StoreOptions,
-} from "./types";
-import { isEqual } from "./utils";
+} from "react-constore/types";
+
+import { isEqual } from "react-constore/utils";
 
 const createStore = <T extends State>(
   initialState: T | (() => T),

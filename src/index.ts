@@ -1,3 +1,3 @@
 // Main export
-export { default } from "./store";
-export type { State, StoreAPI } from "./types";
+export { default } from "react-constore/store";
+export type { State, StoreAPI } from "react-constore/types";
