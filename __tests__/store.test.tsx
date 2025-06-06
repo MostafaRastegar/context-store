@@ -273,7 +273,7 @@ describe("React Context Store", () => {
       const store = createStore({
         count: 0,
         user: { name: "Guest" },
-        todos: [],
+        todos: [] as string[],
       });
       const { result } = renderHook(() =>
         store.useStoreKeys(["count", "user"])
@@ -296,7 +296,7 @@ describe("React Context Store", () => {
       const store = createStore({
         count: 0,
         user: { name: "Guest" },
-        todos: [],
+        todos: [] as string[],
       });
       let renderCount = 0;
 
@@ -398,6 +398,109 @@ describe("React Context Store", () => {
     });
   });
 
+  describe("shallowCompare option", () => {
+    it("should use shallow comparison when shallowCompare is true", () => {
+      const initialState = {
+        user: { name: "John", age: 30 },
+        settings: { theme: "dark", notifications: true },
+      };
+      const store = createStore(initialState, { shallowCompare: true });
+
+      const { result } = renderHook(() => store.useStore());
+
+      const initialStoreState = result.current.state;
+
+      // Test 1: Shallow comparison detects reference change
+      act(() => {
+        result.current.setState({
+          user: { name: "John", age: 30 }, // Same values, different reference
+        });
+      });
+
+      const stateAfterSameValues = result.current.state;
+
+      expect(stateAfterSameValues.user).not.toBe(initialStoreState.user);
+
+      // Test 2: No change when same reference
+      const currentUser = stateAfterSameValues.user;
+      act(() => {
+        result.current.setState({
+          user: currentUser, // Same reference
+        });
+      });
+
+      const stateAfterSameRef = result.current.state;
+      expect(stateAfterSameRef.user).toBe(currentUser);
+    });
+
+    it("should use deep comparison by default", () => {
+      const initialState = {
+        user: { name: "John", age: 30 },
+        settings: { theme: "dark", notifications: true },
+      };
+      const store = createStore(initialState); // No options, default behavior
+
+      const { result } = renderHook(() => store.useStore());
+
+      const initialStoreState = result.current.state;
+
+      // Deep comparison detects no change when values are the same
+      act(() => {
+        result.current.setState({
+          user: { name: "John", age: 30 }, // Same values, different reference
+        });
+      });
+
+      const stateAfterUpdate = result.current.state;
+
+      expect(stateAfterUpdate.user).toBe(initialStoreState.user); // Reference unchanged due to deep comparison
+    });
+
+    it("should notify listeners only when shallow comparison detects changes", () => {
+      const initialState = {
+        counter: 0,
+        data: { value: 100 },
+      };
+
+      const listener = jest.fn();
+
+      const { result } = renderHook(() => {
+        const store = createStore(initialState, { shallowCompare: true });
+        store.subscribe(listener);
+        return {
+          setState: store.setState,
+        };
+      });
+
+      // Should trigger notification (different reference)
+      act(() => {
+        result.current.setState({
+          data: { value: 100 }, // Same value, different reference
+        });
+      });
+
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      // Should not trigger notification (same reference)
+      const currentData = { value: 200 };
+      act(() => {
+        result.current.setState({
+          data: currentData,
+        });
+      });
+
+      expect(listener).toHaveBeenCalledTimes(2);
+
+      act(() => {
+        result.current.setState({
+          data: currentData, // Same reference again
+        });
+      });
+
+      expect(listener).toHaveBeenCalledTimes(2); // No additional call
+    });
+  });
+
   describe("React Integration Tests", () => {
     // Test component using the store
     const TestComponent: React.FC = () => {
@@ -473,7 +576,10 @@ describe("React Context Store", () => {
 
   describe("Edge Cases", () => {
     it("should handle null and undefined values", () => {
-      const store = createStore({ value: null, other: undefined });
+      const store = createStore<{
+        value: string | null | undefined;
+        other: undefined;
+      }>({ value: null, other: undefined });
 
       expect(store.getState("value")).toBeNull();
       expect(store.getState("other")).toBeUndefined();

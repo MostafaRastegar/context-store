@@ -6,11 +6,13 @@ import type {
   SetStateAction,
   Listener,
   GlobalListener,
+  StoreOptions,
 } from "./types";
 import { isEqual } from "./utils";
 
 const createStore = <T extends State>(
-  initialState: T | (() => T)
+  initialState: T | (() => T),
+  options?: StoreOptions
 ): StoreAPI<T> => {
   let state: T =
     typeof initialState === "function"
@@ -49,7 +51,12 @@ const createStore = <T extends State>(
     let hasChanges = false;
 
     Object.keys(nextState).forEach((key) => {
-      if (!isEqual(state[key], nextState[key])) {
+      const shouldUseShallow = options?.shallowCompare === true;
+      const isChanged = shouldUseShallow
+        ? state[key] !== nextState[key]
+        : !isEqual(state[key], nextState[key]);
+
+      if (isChanged) {
         changedKeys.push(key);
         hasChanges = true;
       }

@@ -10,6 +10,10 @@ export type PartialState<T extends State> =
 
 export type SetStateAction<T> = T | ((prev: T) => T);
 
+export interface StoreOptions {
+  shallowCompare?: boolean;
+}
+
 export interface StoreAPI<T extends State> {
   getState(): T;
   getState<K extends keyof T>(key: K): T[K];
